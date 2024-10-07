@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import subprocess
 
+subprocess.run("clear")
 # ADJUSTABLE VARIABLES
 keypair = 'rfstudentkey'
 sg_ids = ['sg-015185af0d0cd3ff9']
@@ -20,7 +21,7 @@ userdata = """#!/bin/bash
         echo '<br>Instance Type: ' >> index.html
         curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type >> index.html
         echo '<br>Availabilty Zone: ' >> index.html
-        curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/availability-zone >> index.html
+        curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone >> index.html
         cp index.html /var/www/html/index.html"""
 IMAGE_URL = 'http://devops.witdemo.net/logo.jpg'
 
