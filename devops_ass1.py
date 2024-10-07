@@ -17,10 +17,11 @@ userdata = """#!/bin/bash
         curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4 >> index.html
         echo '<br>Instance ID: ' >> index.html
         curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id >> index.html
+        echo '<br>Instance Type: ' >> index.html
+        curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type >> index.html
         echo '<br>Availabilty Zone: ' >> index.html
-        
+        curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/availability-zone >> index.html
         cp index.html /var/www/html/index.html"""
-
 IMAGE_URL = 'http://devops.witdemo.net/logo.jpg'
 
 ec2 = boto3.resource('ec2')
