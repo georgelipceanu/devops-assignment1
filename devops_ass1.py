@@ -5,10 +5,11 @@ import subprocess
 
 subprocess.run("clear")
 # ADJUSTABLE VARIABLES
+addtional_text = "This is additional text! :)"
 keypair = 'rfstudentkey'
 sg_ids = ['sg-015185af0d0cd3ff9']
 instance_image_id = 'ami-0ebfd941bbafe70c6'
-userdata = """#!/bin/bash
+userdata = f"""#!/bin/bash
         yum install httpd -y
         systemctl enable httpd
         systemctl start httpd
@@ -22,6 +23,7 @@ userdata = """#!/bin/bash
         curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type >> index.html
         echo '<br>Availabilty Zone: ' >> index.html
         curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone >> index.html
+        echo '<br> {addtional_text}' >> index.html
         cp index.html /var/www/html/index.html"""
 IMAGE_URL = 'http://devops.witdemo.net/logo.jpg'
 
