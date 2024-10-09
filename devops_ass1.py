@@ -6,7 +6,7 @@ import logging
 
 # ERROR LOGGING SETUP
 subprocess.run("clear")
-logging.basicConfig(filename='logs.txt', level=logging.ERROR, 
+logging.basicConfig(filename='error_logs.txt', level=logging.ERROR, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 # ADJUSTABLE VARIABLES
@@ -35,40 +35,51 @@ IMAGE_URL = 'http://devops.witdemo.net/logo.jpg'
 # KEYPAIR SETUP
 subprocess.run(["sudo", "chmod", "700", f"{keypair}.pem"], check=True)
 
-# IMAGE SETUP
+# IMAGE SETUP AND WEBSITE
 print("Downloading Logo...")
 try:
     subprocess.run(["curl", "-o", 'logo.jpg', IMAGE_URL], check=True)
     print("Download Complete!")
 except Exception as error:
     print("Failed to download Logo.")
-    logging.error(error)  
+    logging.error(error)
+print("Setting up index.html for S3...")
+try: 
+    subprocess.run("""echo '<img src="logo.jpg">' > index.html""", shell=True, check=True)
+    print("Website created.")
+except Exception as error:
+    print("Failed to create index.html.")
+    logging.error(error)
 
 # SPINNING UP INSTANCE
-ec2 = boto3.resource('ec2')
-ec2_client = boto3.client('ec2')
-print("---Starting instance---")
-new_instances = ec2.create_instances(
-    ImageId=instance_image_id,
-    MinCount=1,
-    MaxCount=1,
-    SecurityGroupIds=sg_ids,
-    KeyName=keypair,
-    UserData=userdata,
-    InstanceType='t2.nano',
-    TagSpecifications=[
-        {
-            'ResourceType': 'instance',
-            'Tags': [
-                {'Key': 'Name', 'Value': 'MyWebServer'},
-            ]
-        }
-    ])
-instance_id = new_instances[0].id
-print(f"Instance ID: {instance_id}")
-print("Waiting for running...")
-new_instances[0].wait_until_running()
-print("Instance Running!")
+try:
+    ec2 = boto3.resource('ec2')
+    ec2_client = boto3.client('ec2')
+    print("---Starting instance---")
+    new_instances = ec2.create_instances(
+        ImageId=instance_image_id,
+        MinCount=1,
+        MaxCount=1,
+        SecurityGroupIds=sg_ids,
+        KeyName=keypair,
+        UserData=userdata,
+        InstanceType='t2.nano',
+        TagSpecifications=[
+            {
+                'ResourceType': 'instance',
+                'Tags': [
+                    {'Key': 'Name', 'Value': 'MyWebServer'},
+                ]
+            }
+        ])
+    instance_id = new_instances[0].id
+    print(f"Instance ID: {instance_id}")
+    print("Waiting for running...")
+    new_instances[0].wait_until_running()
+    print("Instance Running!")
+except Exception as error:
+    print("Failed to install instance.")
+    logging.error(error)
 
 # SPINNING UP BUCKET
 s3 = boto3.resource("s3")
@@ -108,6 +119,7 @@ try:
         ]
     }
     s3.Bucket(bucket_name).upload_file('logo.jpg', 'logo.jpg', ExtraArgs={'ContentType': 'image/jpeg'})
+    s3.Bucket(bucket_name).upload_file('index.html', 'index.html', ExtraArgs={'ContentType': 'text/html'})
     bucket_policy_json = json.dumps(bucket_policy) # CONVERT POLICY TO JSON AND APPLY
     s3_client.put_bucket_policy(Bucket=bucket_name, Policy=bucket_policy_json)
     print("Bucket Completed!")
@@ -124,16 +136,11 @@ try:
 except Exception as error:
     print("Failed to retrieve instance URL")
     logging.error(error)
-# print(f"---Retrieving URL of {bucket_name}---") # BUCKET RETRIEVAL
-# try:
-#     bucket_location = s3_client.get_bucket_location(Bucket=bucket_name)
-#     region = bucket_location['LocationConstraint'] if bucket_location['LocationConstraint'] else 'us-east-1'
-# except Exception as error:
-#     print("Failed to retrieve bucket URL")
-#     logging.error(error)
+print(f"---Retrieving URL of {bucket_name}---") # BUCKET RETRIEVAL
+bucket_url = f"http//{bucket_name}.s3-website-us-east-1.amazonaws.com"
 with open('glipceanu-websites.txt', 'w') as file: # WRITING TO glipceanu-websites.txt
     file.write(instance_url)
-    #file.write(bucket_url)
+    file.write(bucket_url)
 
 # MONITORING INSTALL
 print("---Installing monitoring---")
