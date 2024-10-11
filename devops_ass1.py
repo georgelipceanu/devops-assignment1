@@ -3,11 +3,34 @@ from datetime import datetime
 import json
 import subprocess
 import logging
+import webbrowser
+# from selenium import webdriver
+# from selenium.webdriver.firefox.options import Options
+# from selenium.webdriver.firefox.service import Service
+# import os
 
 # ERROR LOGGING SETUP
 subprocess.run("clear")
 logging.basicConfig(filename='error_logs.txt', level=logging.ERROR, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
+   
+# source: https://www.browserstack.com/guide/geckodriver-selenium-python
+# print("---Setting up web driver---") DID NOT WORK
+# try:
+#     cwd = os.getcwd()  
+#     geckodriver_path = os.path.join(cwd, 'geckodriver')
+#     options = Options()
+#     options.binary_location = r'/usr/bin/firefox'
+#     profile_path = r"/home/vboxuser/snap/firefox/common/.mozilla/firefox/wv7wjvux.george"  # Update with your actual path
+#     options.set_preference('profile', profile_path)
+#     service = Service(geckodriver_path)
+#     driver = webdriver.Firefox(service=service, options=options)
+#     driver.get('https://www.bstackdemo.com/')
+# except Exception as error:
+#     print("Failed to setup web driver.")
+#     logging.error(error)
+#     quit()
+# quit()
 
 # ADJUSTABLE VARIABLES
 addtional_text = "This is additional text! :)"
@@ -33,7 +56,7 @@ userdata = f"""#!/bin/bash
 IMAGE_URL = 'http://devops.witdemo.net/logo.jpg'
 
 # KEYPAIR SETUP
-subprocess.run(["sudo", "chmod", "700", f"{keypair}.pem"], check=True)
+subprocess.run(["chmod", "700", f"{keypair}.pem"], check=True)
 
 # IMAGE SETUP AND WEBSITE
 print("Downloading Logo...")
@@ -52,10 +75,10 @@ except Exception as error:
     logging.error(error)
 
 # SPINNING UP INSTANCE
+ec2 = boto3.resource('ec2')
+ec2_client = boto3.client('ec2')
+print("---Starting instance---")
 try:
-    ec2 = boto3.resource('ec2')
-    ec2_client = boto3.client('ec2')
-    print("---Starting instance---")
     new_instances = ec2.create_instances(
         ImageId=instance_image_id,
         MinCount=1,
@@ -77,6 +100,7 @@ try:
     print("Waiting for running...")
     new_instances[0].wait_until_running()
     print("Instance Running!")
+    new_instances[0].reload()
 except Exception as error:
     print("Failed to install instance.")
     logging.error(error)
@@ -132,20 +156,35 @@ print(f"---Retrieving DNS of {instance_id}---") # INSTANCE RETRIEVAL
 try:
     ec2_details = ec2_client.describe_instances(InstanceIds=[instance_id])
     instance_url = ec2_details['Reservations'][0]['Instances'][0].get('PublicDnsName')
-    print("DNS retrieved!")
+    print(f"DNS retrieved!: {instance_url}")
 except Exception as error:
     print("Failed to retrieve instance URL")
     logging.error(error)
 print(f"---Retrieving URL of {bucket_name}---") # BUCKET RETRIEVAL
 bucket_url = f"http//{bucket_name}.s3-website-us-east-1.amazonaws.com"
+print(f"DNS retrieved!: {bucket_url}")
 with open('glipceanu-websites.txt', 'w') as file: # WRITING TO glipceanu-websites.txt
     file.write(instance_url)
     file.write(bucket_url)
 
+# WEBSITE CONNECTIONS (ADDITIONAL) 
+print("Connecting to websites...")
+try:
+    webbrowser.open(instance_url)
+except Exception as error:
+    print("Error connecting to EC2.")
+try:
+    webbrowser.open(bucket_url)
+except Exception as error:
+    print("Error connecting to bucket.")
+
 # MONITORING INSTALL
 print("---Installing monitoring---")
-#instance_ip = new_instances[0].public_ip_address
-instance_ip = ec2_details['Reservations'][0]['Instances'][0].get('PublicIpAddress')
+instance_ip = new_instances[0].public_ip_address
+#instance_ip = ec2_details['Reservations'][0]['Instances'][0].get('PublicIpAddress')
+while True:
+    if new_instances[0]: break
+    print("Could not connect (Sleeping for 10)")
 try:
     print(f"Copying monitoring.sh to {instance_id} at {instance_ip}...")
     subprocess.run(["scp", "-i", f"{keypair}.pem", "-o", "StrictHostKeyChecking=no", "monitoring.sh", f"ec2-user@{instance_ip}:."], check=True)
