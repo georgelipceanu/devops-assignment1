@@ -128,7 +128,7 @@ try:
 except Exception as error:
     print("Unable to configure static hosting.")
     logging.error(error)
-print("Uploading files to bucket...")
+print("Updating bucket policies...")
 try: 
     bucket_policy = {
         "Version": "2012-10-17",
@@ -142,13 +142,23 @@ try:
             }
         ]
     }
-    s3.Bucket(bucket_name).upload_file('logo.jpg', 'logo.jpg', ExtraArgs={'ContentType': 'image/jpeg'})
-    s3.Bucket(bucket_name).upload_file('index.html', 'index.html', ExtraArgs={'ContentType': 'text/html'})
     bucket_policy_json = json.dumps(bucket_policy) # CONVERT POLICY TO JSON AND APPLY
     s3_client.put_bucket_policy(Bucket=bucket_name, Policy=bucket_policy_json)
-    print("Bucket Completed!")
+    print("Bucket policy put successfully!")
 except Exception as error:
-    print("Unable to upload files.")
+    print("Unable to put bucket policy.")
+    logging.error(error)
+print("Uploading logo.jpg...")
+try:
+    s3.Bucket(bucket_name).upload_file('logo.jpg', 'logo.jpg', ExtraArgs={'ContentType': 'image/jpeg'})
+except Exception as error:
+    print("Unable to upload logo.jpg.")
+    logging.error(error)
+print("Uploading index.html..")
+try:
+    s3.Bucket(bucket_name).upload_file('index.html', 'index.html', ExtraArgs={'ContentType': 'text/html'})
+except Exception as error:
+    print("Unable to upload logo.jpg.")
     logging.error(error)
 
 # WRITING URLS TO FILE
@@ -161,30 +171,38 @@ except Exception as error:
     print("Failed to retrieve instance URL")
     logging.error(error)
 print(f"---Retrieving URL of {bucket_name}---") # BUCKET RETRIEVAL
-bucket_url = f"http//{bucket_name}.s3-website-us-east-1.amazonaws.com"
+bucket_url = f"http://{bucket_name}.s3-website-us-east-1.amazonaws.com"
 print(f"DNS retrieved!: {bucket_url}")
 with open('glipceanu-websites.txt', 'w') as file: # WRITING TO glipceanu-websites.txt
-    file.write(instance_url)
+    file.write(instance_url+'\n')
     file.write(bucket_url)
 
 # WEBSITE CONNECTIONS (ADDITIONAL) 
-print("Connecting to websites...")
+print("---Connecting to websites---")
 try:
-    webbrowser.open(instance_url)
+    print("Waiting for EC2 to respond to HTTP...")
+    waiter = ec2_client.get_waiter('instance_status_ok')
+    waiter.wait(InstanceIds=[instance_id])
+    print("HTTP running, trying EC2 connection...")
+    webbrowser.open('http://'+instance_url)
+    
 except Exception as error:
     print("Error connecting to EC2.")
+    logging.error(error)
 try:
+    print("Trying S3 connection...")
     webbrowser.open(bucket_url)
 except Exception as error:
     print("Error connecting to bucket.")
+    logging.error(error)
 
 # MONITORING INSTALL
 print("---Installing monitoring---")
 instance_ip = new_instances[0].public_ip_address
 #instance_ip = ec2_details['Reservations'][0]['Instances'][0].get('PublicIpAddress')
-while True:
-    if new_instances[0]: break
-    print("Could not connect (Sleeping for 10)")
+# while True:
+#     if new_instances[0]: break
+#     print("Could not connect (Sleeping for 10)")
 try:
     print(f"Copying monitoring.sh to {instance_id} at {instance_ip}...")
     subprocess.run(["scp", "-i", f"{keypair}.pem", "-o", "StrictHostKeyChecking=no", "monitoring.sh", f"ec2-user@{instance_ip}:."], check=True)
