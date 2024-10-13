@@ -7,6 +7,7 @@ import json
 import subprocess
 import logging
 import webbrowser
+import time
 # from selenium import webdriver
 # from selenium.webdriver.firefox.options import Options
 # from selenium.webdriver.firefox.service import Service
@@ -218,7 +219,7 @@ print(f"---Retrieving URL of {bucket_name}---") # BUCKET RETRIEVAL
 bucket_url = f"http://{bucket_name}.s3-website-us-east-1.amazonaws.com"
 print(f"DNS retrieved!: {bucket_url}")
 with open('glipceanu-websites.txt', 'w') as file: # WRITING TO glipceanu-websites.txt
-    file.write(instance_url+'\n')
+    file.write(f'http://{instance_url}'+'\n')
     file.write(bucket_url)
 
 # MONITORING INSTALL
@@ -266,8 +267,8 @@ try:
                                             Dimensions=[{'Name':'InstanceId', 'Value': instance_id}])
     metric = list(metric_iterator)[0]
     response = metric.get_statistics(StartTime = datetime.utcnow() - timedelta(minutes=4),   # 4 minutes ago
-                                    EndTime=datetime.utcnow(),                              # now
-                                    Period=240,                                             # 4 min intervals
+                                    EndTime=datetime.utcnow(),                               # now
+                                    Period=60,                                               # 4 min intervals
                                     Statistics=['Average'])
     print ("Average CPU utilisation:", response['Datapoints'][0]['Average'], response['Datapoints'][0]['Unit'])
 except Exception as error:
