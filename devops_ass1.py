@@ -1,6 +1,6 @@
 import boto3
 import argparse
-#from datetime import datetime
+from datetime import datetime, timedelta
 import string
 import random
 import json
@@ -185,8 +185,8 @@ except Exception as error:
     logging.error(error)
 
 # WRITING URLS TO FILE
-print(f"---Retrieving DNS of {instance_id}---") # INSTANCE RETRIEVAL
 try:
+    print(f"---Retrieving DNS of {instance_id}---") # INSTANCE RETRIEVAL
     # ec2_details = ec2_client.describe_instances(InstanceIds=[instance_id])
     # instance_url = ec2_details['Reservations'][0]['Instances'][0].get('PublicDnsName')
     instance_url = new_instances[0].public_dns_name
@@ -204,7 +204,7 @@ with open('glipceanu-websites.txt', 'w') as file: # WRITING TO glipceanu-website
 # MONITORING INSTALL
 print("---Installing monitoring---")
 instance_ip = new_instances[0].public_ip_address
-waiter = ec2_client.get_waiter('instance_status_ok')
+waiter = ec2_client.get_waiter('instance_status_ok') # WAITING UNTIL ALL INSTALLS ARE DONE IN ORDER FOR SSH PORT TO OPEN
 print("Waiting for Instance status: OK...")
 waiter.wait(InstanceIds=[instance_id])
 try:
@@ -232,4 +232,24 @@ try:
     webbrowser.open(bucket_url)
 except Exception as error:
     print("Error connecting to bucket.")
+    logging.error(error)
+
+# CLOUDWATCH MONITORING (ADDITIONAL)
+print("---Implementing Cloudwatch---")
+cloudwatch = boto3.resource('cloudwatch')
+try: 
+    #new_instances[0].monitor()  # Enables detailed monitoring on instance (1-minute intervals)
+    instance = ec2.Instance(instance_id)
+    instance.monitor() # Enables detailed monitoring on instance (1-minute intervals)
+    metric_iterator = cloudwatch.metrics.filter(Namespace='AWS/EC2',
+                                            MetricName='CPUUtilization',
+                                            Dimensions=[{'Name':'InstanceId', 'Value': instance_id}])
+    metric = list(metric_iterator)[0]
+    response = metric.get_statistics(StartTime = datetime.utcnow() - timedelta(minutes=4),   # 4 minutes ago
+                                    EndTime=datetime.utcnow(),                              # now
+                                    Period=240,                                             # 4 min intervals
+                                    Statistics=['Average'])
+    print ("Average CPU utilisation:", response['Datapoints'][0]['Average'], response['Datapoints'][0]['Unit'])
+except Exception as error:
+    print("Error monitoring with Cloudwatch.")
     logging.error(error)
