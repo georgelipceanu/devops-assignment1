@@ -1,5 +1,5 @@
 import boto3
-import sys
+import argparse
 #from datetime import datetime
 import string
 import random
@@ -35,10 +35,26 @@ logging.basicConfig(filename='error_logs.txt', level=logging.ERROR,
 #     quit()
 # quit()
 
+# SETTING UP ARGPARSER (ADDITIONAL, source: https://docs.python.org/3/library/argparse.html)
+parser = argparse.ArgumentParser(
+            prog='DevOpsAssignment',
+            description='Script that spins up EC2 and Bucket')
+parser.add_argument('-b', '--bold', action='store_true', help="Make the EC2 text bold.")
+parser.add_argument('-h1', '--header', action='store_true', help="Make the EC2 text H1.")
+parser.add_argument('-i', '--italics', action='store_true', help="Make the EC2 text italics.")
+parser.add_argument('additional_text', nargs='*', help="Additional text to display")
+args = parser.parse_args()
+if args.additional_text:
+    additional_text = ' '.join(args.additional_text) 
+else: additional_text = "This is additional text! :)"
+if args.bold:
+    additional_text = f"<b>{additional_text}</b>"
+elif args.header:
+    additional_text = f"<h1>{additional_text}</h1>"
+elif args.italics:
+    additional_text = f"<i>{additional_text}</i>"
+
 # ADJUSTABLE VARIABLES
-if len(sys.argv) > 1: # source: https://www.geeksforgeeks.org/python-sys-module/
-    addtional_text = f"{''.join(sys.argv[1:])}"
-else: addtional_text = "This is additional text! :)"
 keypair = 'rfstudentkey'
 sg_ids = ['sg-015185af0d0cd3ff9']
 instance_image_id = 'ami-0ebfd941bbafe70c6'
@@ -56,7 +72,7 @@ userdata = f"""#!/bin/bash
         curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-type >> index.html
         echo '<br>Availabilty Zone: ' >> index.html
         curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone >> index.html
-        echo '<br> {addtional_text}' >> index.html
+        echo '<br> {additional_text}' >> index.html
         cp index.html /var/www/html/index.html"""
 IMAGE_URL = 'http://devops.witdemo.net/logo.jpg'
 
@@ -106,7 +122,7 @@ try:
     new_instances[0].wait_until_running()
     print("Instance Running!")
     new_instances[0].reload()
-    print(dir(new_instances[0]))
+    #print(dir(new_instances[0]))
 except Exception as error:
     print("Failed to install instance.")
     logging.error(error)
