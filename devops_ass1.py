@@ -55,9 +55,24 @@ elif args.italics:
     additional_text = f"<i>{additional_text}</i>"
 
 # ADJUSTABLE VARIABLES
+print("---Variable Setup---")
+print("Retrieving AMI...")
+try:
+    # source: https://aws.amazon.com/blogs/compute/query-for-the-latest-amazon-linux-ami-ids-using-aws-systems-manager-parameter-store/
+    instance_image_id = subprocess.run(
+        """aws ec2 describe-images \
+        --region us-east-1 \
+        --owners amazon \
+        --filters "Name=name,Values=amzn2-ami-kernel-*-x86_64-gp2" \
+        --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text""",
+        shell=True, check=True, stdout=subprocess.PIPE, text=True
+        ).stdout.strip()
+    print(f"Retrieved {instance_image_id}!")
+except Exception as error:
+    instance_image_id = 'ami-0ebfd941bbafe70c6'
+    print(f"Unable to retrieve AMI, using {instance_image_id} as default.")
 keypair = 'rfstudentkey'
-sg_ids = ['sg-015185af0d0cd3ff9']
-instance_image_id = 'ami-0ebfd941bbafe70c6'
+sg_ids = ['sg-015185af0d0cd3ff9'] # SECURITY GROUP THAT TAKES IN SSH AND HTTP TRAFFIC
 userdata = f"""#!/bin/bash
         yum install httpd -y
         systemctl enable httpd
@@ -77,7 +92,12 @@ userdata = f"""#!/bin/bash
 IMAGE_URL = 'http://devops.witdemo.net/logo.jpg'
 
 # KEYPAIR SETUP
-subprocess.run(["chmod", "700", f"{keypair}.pem"], check=True)
+print("Setting keypair with correct permissions...")
+try:
+    subprocess.run(["chmod", "700", f"{keypair}.pem"], check=True)
+except Exception as error:
+    print("No keypair of the same name in this directory.")
+    logging.error(error)
 
 # IMAGE SETUP AND WEBSITE
 print("Downloading Logo...")
