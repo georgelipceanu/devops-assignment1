@@ -1,5 +1,7 @@
 import boto3
 from datetime import datetime
+import string
+import random
 import json
 import subprocess
 import logging
@@ -108,7 +110,8 @@ except Exception as error:
 # SPINNING UP BUCKET
 s3 = boto3.resource("s3")
 s3_client = boto3.client("s3")
-bucket_name = f"{datetime.now().strftime('%Y-%m-%d-%s')}-glipceanu"
+ran = ''.join(random.choices(string.ascii_uppercase + string.digits, k = 6)) # source: https://www.javatpoint.com/python-program-to-generate-a-random-string
+bucket_name = f"{ran}-glipceanu"
 print(f"---Launching {bucket_name}---")
 try:
     response = s3.create_bucket(Bucket=bucket_name)
@@ -184,7 +187,7 @@ try:
     waiter = ec2_client.get_waiter('instance_status_ok')
     waiter.wait(InstanceIds=[instance_id])
     print("HTTP running, trying EC2 connection...")
-    webbrowser.open('http://'+instance_url)
+    webbrowser.open(f'http://{instance_url}')
     
 except Exception as error:
     print("Error connecting to EC2.")
