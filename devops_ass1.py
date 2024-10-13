@@ -18,7 +18,7 @@ logging.basicConfig(filename='error_logs.txt', level=logging.ERROR,
                     format='%(asctime)s - %(levelname)s - %(message)s')
    
 # source: https://www.browserstack.com/guide/geckodriver-selenium-python
-# print("---Setting up web driver---") DID NOT WORK
+# print("---Setting up web driver---") DID NOT WORK USING THIS METHOD, WORKING WEB CONNECTION DOWN BELOW
 # try:
 #     cwd = os.getcwd()  
 #     geckodriver_path = os.path.join(cwd, 'geckodriver')
@@ -106,6 +106,7 @@ try:
     new_instances[0].wait_until_running()
     print("Instance Running!")
     new_instances[0].reload()
+    print(dir(new_instances[0]))
 except Exception as error:
     print("Failed to install instance.")
     logging.error(error)
@@ -170,8 +171,9 @@ except Exception as error:
 # WRITING URLS TO FILE
 print(f"---Retrieving DNS of {instance_id}---") # INSTANCE RETRIEVAL
 try:
-    ec2_details = ec2_client.describe_instances(InstanceIds=[instance_id])
-    instance_url = ec2_details['Reservations'][0]['Instances'][0].get('PublicDnsName')
+    # ec2_details = ec2_client.describe_instances(InstanceIds=[instance_id])
+    # instance_url = ec2_details['Reservations'][0]['Instances'][0].get('PublicDnsName')
+    instance_url = new_instances[0].public_dns_name
     print(f"DNS retrieved!: {instance_url}")
 except Exception as error:
     print("Failed to retrieve instance URL")
@@ -183,32 +185,12 @@ with open('glipceanu-websites.txt', 'w') as file: # WRITING TO glipceanu-website
     file.write(instance_url+'\n')
     file.write(bucket_url)
 
-# WEBSITE CONNECTIONS (ADDITIONAL) 
-print("---Connecting to websites---")
-try:
-    print("Waiting for EC2 to respond to HTTP...")
-    waiter = ec2_client.get_waiter('instance_status_ok')
-    waiter.wait(InstanceIds=[instance_id])
-    print("HTTP running, trying EC2 connection...")
-    webbrowser.open(f'http://{instance_url}')
-    
-except Exception as error:
-    print("Error connecting to EC2.")
-    logging.error(error)
-try:
-    print("Trying S3 connection...")
-    webbrowser.open(bucket_url)
-except Exception as error:
-    print("Error connecting to bucket.")
-    logging.error(error)
-
 # MONITORING INSTALL
 print("---Installing monitoring---")
 instance_ip = new_instances[0].public_ip_address
-#instance_ip = ec2_details['Reservations'][0]['Instances'][0].get('PublicIpAddress')
-# while True:
-#     if new_instances[0]: break
-#     print("Could not connect (Sleeping for 10)")
+waiter = ec2_client.get_waiter('instance_status_ok')
+print("Waiting for Instance status: OK...")
+waiter.wait(InstanceIds=[instance_id])
 try:
     print(f"Copying monitoring.sh to {instance_id} at {instance_ip}...")
     subprocess.run(["scp", "-i", f"{keypair}.pem", "-o", "StrictHostKeyChecking=no", "monitoring.sh", f"ec2-user@{instance_ip}:."], check=True)
@@ -219,3 +201,19 @@ try:
 except Exception as error:
     print("Failed to install monitoring.")
     logging.error(error) 
+
+# WEBSITE CONNECTIONS (ADDITIONAL) 
+print("---Connecting to websites---")
+# NO NEED FOR AN ADDITIONAL WAITER SINCE INSTANCE STATUS IS OK BY THIS POINT
+try:
+    print("HTTP running, trying EC2 connection...")
+    webbrowser.open(f'http://{instance_url}')
+except Exception as error:
+    print("Error connecting to EC2.")
+    logging.error(error)
+try:
+    print("Trying S3 connection...")
+    webbrowser.open(bucket_url)
+except Exception as error:
+    print("Error connecting to bucket.")
+    logging.error(error)
