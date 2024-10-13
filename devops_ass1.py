@@ -1,5 +1,6 @@
 import boto3
-from datetime import datetime
+import sys
+#from datetime import datetime
 import string
 import random
 import json
@@ -35,7 +36,9 @@ logging.basicConfig(filename='error_logs.txt', level=logging.ERROR,
 # quit()
 
 # ADJUSTABLE VARIABLES
-addtional_text = "This is additional text! :)"
+if len(sys.argv) > 1: # source: https://www.geeksforgeeks.org/python-sys-module/
+    addtional_text = f"{''.join(sys.argv[1:])}"
+else: addtional_text = "This is additional text! :)"
 keypair = 'rfstudentkey'
 sg_ids = ['sg-015185af0d0cd3ff9']
 instance_image_id = 'ami-0ebfd941bbafe70c6'
@@ -110,7 +113,7 @@ except Exception as error:
 # SPINNING UP BUCKET
 s3 = boto3.resource("s3")
 s3_client = boto3.client("s3")
-ran = ''.join(random.choices(string.ascii_uppercase + string.digits, k = 6)) # source: https://www.javatpoint.com/python-program-to-generate-a-random-string
+ran = ''.join(random.choices(string.ascii_lowercase + string.digits, k = 6)) # source: https://www.javatpoint.com/python-program-to-generate-a-random-string
 bucket_name = f"{ran}-glipceanu"
 print(f"---Launching {bucket_name}---")
 try:
